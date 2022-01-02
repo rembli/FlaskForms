@@ -1,0 +1,56 @@
+# PYTHON #############################################################
+
+# run app
+python app.py
+
+# manage environment
+pipenv shell
+pipenv lock -r > requirements.txt
+
+# set env variables
+https://www.twilio.com/blog/environment-variables-python
+
+
+# DOCKER #############################################################
+docker login
+
+# create a custom network bridge
+docker network create -d bridge baas-net
+docker network inspect baas-net
+
+# run mongo in container
+# https://www.thepolyglotdeveloper.com/2019/01/getting-started-mongodb-docker-container-deployment/
+
+docker run --name baas-db --network=baas-net -d -p 27017-27019:27017-27019 mongo:4.0.4
+MONGO_CONTAINER_IP=$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' baas-db)
+echo $MONGO_CONTAINER_IP
+docker exec -it baas-db bash
+mongo
+show dbs
+use baas
+db.createUser(
+{	user: "baas",
+	pwd: "baas",
+    roles:[{role: "userAdmin" , db:"baas"}]
+})
+exit
+exit
+MONGO_URI="mongodb://baas:baas@$MONGO_CONTAINER_IP:27017/baas"
+echo $MONGO_URI
+
+# docker app
+docker build -t rembli/baas .
+docker push rembli/baas
+docker run --name baas --network=baas-net -dp 5000:5000 -e MONGO_URI=$MONGO_URI rembli/baas 
+
+docker exec -it baas bash
+# docker run --name baas -it --entrypoint /bin/bash rembli/baas 
+
+
+# BASH #############################################################
+
+# fix probblems with bash script edited on Windows
+sudo apt-get install dos2unix
+# example: convert bash-sript "up" with dos2unix
+dos2unix ./up
+

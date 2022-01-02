@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+    <script src="https://formbuilder.online/assets/js/form-builder.min.js"></script>
+    <script src="https://formbuilder.online/assets/js/form-render.min.js"></script>
+    <script src="https://use.fontawesome.com/releases/v5.15.4/js/all.js"></script>
+  </head>
+<body>
+
+   <!-- ### FORM BUILDER PAGE LAYOUT ##################################### -->
+
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#"><i class="fab fa-wpforms"></i> Easy form builder</a>
+    </div>
+  </nav>
+  <br>
+
+  <div class="container">
+
+    <div class="row align-items-start">
+      <div class="col-3" style="background:#eeeeee">
+        <br>
+        <div><b>Templates</b> 
+          <a href="javascript:new_form_template()"><i class="fas fa-plus-circle"></i></a> 
+          <a href="javascript:load_templates()"><i class="fas fa-sync"></i></a> 
+        </div>
+        <hr>
+        <div style="overflow: auto;background:#eeeeee;height:100%;padding:10px">
+          <div id="form_template_list"></div>
+        </div>
+        <br>
+        
+      </div>
+      <div class="col-9">
+
+        <!-- NAV TABS ################################################ -->
+
+        <ul class="nav nav-tabs" id="myTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true">Home</button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="submissions-tab" data-bs-toggle="tab" data-bs-target="#submissions" type="button" role="tab" aria-controls="submissions" aria-selected="false">Submissions</button>
+          </li>          
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="code-tab" data-bs-toggle="tab" data-bs-target="#code" type="button" role="tab" aria-controls="profile" aria-selected="false">Code</button>
+          </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+
+        <!-- FORM BUILDER ################################################ -->
+
+          <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab"> 
+            <br>    
+            <div id="form_builder_canvas"></div>
+            <br>
+            <hr>
+            <form name="form_template" id="form_template">
+              Name: <input type="text" id="form_template_name" name="form_template_name" class="input" style="width:250px">
+              <button id="form_save_button" type="button" class="btn btn-primary" onClick="save_template();"><i class="fas fa-save"></i>&nbsp;Save</button>
+               &nbsp; | 
+              <button id="form_delete_button" type="button" class="btn" onClick="delete_template();"><i class="fas fa-trash-alt"></i>&nbsp;Delete</button>
+              <br><input type="hidden" id="form_template_id" name="form_template_id" disabled size=40>     
+            </form>
+          </div>
+
+           <!-- FORM SUBMISSIONS ################################################ -->
+
+          <div class="tab-pane fade" id="submissions" role="tabpanel" aria-labelledby="submissions-tab">   
+            <br>
+            <div align="right">
+              <button id="form_preview_button" type="button" class="btn btn-primary" onClick="preview_template();"><i class="fas fa-plus-circle"></i>&nbsp;New</button>
+              <button id="load_form_submissions_button" type="button" class="btn btn-primary" onClick="export_form_submissions(0)"><i class="fas fa-file-csv"></i>&nbsp;Export</button>
+              <button id="load_form_submissions_button" type="button" class="btn btn-primary" onClick="load_form_submissions(0)"><i class="fas fa-sync"></i>&nbsp;Refresh</button>
+            </div>
+              <div id="form_submissions_table"></div>
+          </div>
+
+          <!-- CODE ################################################ -->
+
+          <div class="tab-pane fade" id="code" role="tabpanel" aria-labelledby="code-tab">
+            <br>
+            Use this as a template to include your form into your webpage.
+            <br><br>
+            <pre class="border">
+
+                  &lt;html&gt;
+                    &lt;head&gt;
+                      <b>&lt;script src="/static/js/flask-forms.js"&gt;&lt;/script&gt;</b>
+                    &lt;/head&gt;
+                    &lt;body&gt;
+                      <b>&lt;flask-form template-id="<var_template_id></var_template_id>"/&gt;</b>
+                    &lt;/body&gt;
+                  &lt;/html&gt;
+              </pre>
+              Alternatively you might directly use this link and distribute it:
+              <br><br>
+              <pre class="border">
+                
+                <b>http://localhost:5000/preview?form_template_id=<var_template_id></var_template_id></b>
+              </pre>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <hr>
+    <center>
+      This form builder has been built with <a href="https://formbuilder.online">FormBuilder</a> | <a href="/apidocs" target="apidocs">API</a>
+      <br><br><br>
+    </center>
+ 
+    <!-- ### JAVASCRIPT ##################################### -->
+
+    <script>
+
+    // global variables
+
+    var current_form_template_id = "";
+    var fbEditor = null;
+    var formBuilder = null;
+
+    // new form template
+
+    function new_form_template() {
+      // init layout
+      $('#home-tab').tab('show');
+      $('#form_template_id').val(null);
+      $('#form_template_name').val("new template");          
+      $("#form_submissions_table").html("");
+      sleep (500); // sleep is used to prevent failure in rendering of form builder
+
+      // init form builder
+      current_form_template_id = "";
+      var options = {
+          showActionButtons: false // defaults: `true`
+      };    
+      document.getElementById("form_builder_canvas").innerHTML = "";
+      fbEditor = document.getElementById("form_builder_canvas");
+      formBuilder = $(fbEditor).formBuilder(options);  
+  }
+
+    // show existing form templates
+
+    function load_templates() {    
+      $.ajax({
+        url: '/form-templates',
+        type: 'get',
+        dataType: "json",
+        cache: false,               
+        success: function(form_templates){
+
+          $( "#form_template_list").html("");
+          for (i=0; i<form_templates.length;i++){
+            form_template = form_templates[i];
+            _id = form_template ["_id"]["$oid"];
+            name = form_template ["name"];
+            $( "#form_template_list").append("<a href='javascript:onclick=load_template(\""+_id+"\")'>"+name+"</a><br>");
+          }
+          if (current_form_template_id=="") {
+            current_form_template_id = form_templates[0]["_id"]["$oid"];
+            load_template(current_form_template_id);
+          }
+        }
+      });   
+    }       
+
+    // load template
+
+    function load_template(form_template_id) {
+      current_form_template_id = form_template_id;
+
+      $.ajax ({
+        url: '/form-templates/'+form_template_id,
+        type: 'get',
+        cache: false,
+        success: function (response){
+          form_template = JSON.parse (response);
+          name = form_template["name"];
+          definition = form_template["definition"];
+          formBuilder.actions.setData(definition);
+          $('#form_template_id').val(form_template_id);
+          $('#form_template_name').val(name);
+          $("var_template_id").html(form_template_id);
+    
+          load_form_submissions(form_template_id);
+
+        }});
+    }
+
+    // preview existing template or submit a form
+
+    function preview_template() {
+      window.open ("/preview?form_template_id="+current_form_template_id,"preview");
+    }
+
+    // save current template
+
+    function save_template () {
+      const form_template_id = $('#form_template_id').val();
+      const form_template_name = $('#form_template_name').val();
+      const form_template_defintion = JSON.stringify(formBuilder.actions.save());
+
+      $.ajax ({
+        url: '/form-templates',
+        type: 'post',
+        cache: false,
+        data: {
+          _id: form_template_id,
+          name: form_template_name,
+          definition: form_template_defintion
+        },
+        success: function(new_form_template_id){
+          load_templates();
+          $('#form_template_id').val(new_form_template_id);
+          load_template (new_form_template_id);
+        }
+      });
+    }
+
+    // delete current template
+
+    function delete_template () {
+      const form_template_id = $('#form_template_id').val();
+
+      if (confirm("Sure to delete current form template?")) {
+        $.ajax ({
+          url: '/form-templates/'+form_template_id,
+          type: 'delete',
+          cache: false,
+          success: function (response) {
+            current_form_template_id = "";
+            load_templates();
+          }          
+        });
+      }
+    }    
+
+    // show form submissions
+
+    function load_form_submissions(form_template_id) {    
+      if (form_template_id==0)
+        form_template_id = current_form_template_id;
+      $.ajax({
+        url: '/forms?form_template_id='+form_template_id,
+        type: 'get',
+        dataType: "json",
+        cache: false,               
+        success: function(form_submissions) {
+
+          // infer schema by looking at all documents (max. 1000)
+          table_template = {};
+          for (i=0; i<form_submissions.length;i++)
+            for (k in form_submissions[i]) 
+              if (k[0] != "_")
+                table_template[k] = 1;
+
+          // build header
+          html = "<br><table class='table'><thead><tr>";
+          for (var key in table_template) 
+            html += "<th scope='col'>"+key+"</th>";
+          html += "<th></th></tr></thead><tbody>";
+
+          // fill table
+          for (i=0; i<form_submissions.length;i++) {
+            form = form_submissions[i];
+            form_id = JSON.stringify(form["_id"]["$oid"]);
+            html += "<tr>";
+            for (var key in table_template) 
+                html += "<td>"+form[key]+"</td>";
+            html += "<td><a href='javascript:delete_form("+form_id+");'><i class='fas fa-trash-alt'></i></a></td></tr>";
+          }
+          html += "</table>";
+          $("#form_submissions_table").html(html);
+        }
+      });   
+    }  
+
+    // export form submissions
+
+    function export_form_submissions (form_template_id) {
+      if (form_template_id==0)
+        form_template_id = current_form_template_id;
+      $.ajax({
+        url: '/forms/csv?form_template_id='+form_template_id,
+        type: 'get',
+        cache: false,               
+        success: function(data) {
+                //Convert the Byte Data to BLOB object.
+                var blob = new Blob([data], { type: "application/octetstream" });
+
+                //Check the Browser type and download the File.
+                var isIE = false || !!document.documentMode;
+                if (isIE) {
+                    window.navigator.msSaveBlob(blob, fileName);
+                } else {
+                    var url = window.URL || window.webkitURL;
+                    link = url.createObjectURL(blob);
+                    var a = $("<a />");
+                    a.attr("download", "submissions.csv");
+                    a.attr("href", link);
+                    $("body").append(a);
+                    a[0].click();
+                    $("body").remove(a);
+                }
+            }
+      });
+    }
+
+    // delete form
+
+    function delete_form (form_id) {
+        $.ajax ({
+          url: '/forms/'+form_id,
+          type: 'delete',
+          success: function (response) {
+            load_form_submissions(0);
+          }
+        });
+    }   
+
+    // helper functions
+
+    const sleep = (ms) => {
+      const end = new Date().getTime() + ms;
+      while (new Date().getTime() < end) { /* do nothing */ }
+    }
+
+    // init page
+
+    window.onload = function () {
+      new_form_template();
+      load_templates();
+    }
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ka7Sk0Gln4gmtz2MlQnikT1wXgYsOg+OMhuP+IlRH9sENBO0LRn5q+8nbTov4+1p" crossorigin="anonymous"></script>
+</body>
+</html>
